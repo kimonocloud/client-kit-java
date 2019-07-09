@@ -84,7 +84,7 @@ public class DefaultTenantInfoSupplier implements KCTenantInfoSupplier {
 				return findByIds();
 			} else {
 				List<String> names = filterByName.stream().collect(Collectors.toList());
-				return api.listInteropTenants(names);
+				return api.listInteropTenants(null,names,null,null).getData();
 			}
 		} catch (ApiException ex) {
 			throw new KimonoApiException(ex);

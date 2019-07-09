@@ -16,6 +16,7 @@ import kimono.api.v2.interopdata.model.Task;
 import kimono.api.v2.interopdata.model.Task.ActionEnum;
 import kimono.api.v2.interopdata.model.TaskAck;
 import kimono.api.v2.interopdata.model.TaskAck.StatusEnum;
+import kimono.api.v2.interopdata.model.TasksResponse;
 import kimono.client.KCInteropDataClientFactory;
 import kimono.client.KCTenantInfoSupplier;
 import kimono.client.KimonoApiException;
@@ -164,7 +165,8 @@ public class TaskPoller implements KCTaskPoller {
 	protected void getTasks(TasksApi api, TenantInfo tenant) {
 		try {
 			LOGGER.log(Level.INFO, "Polling: {0}", TenantUtils.describe(tenant));
-			List<Task> tasks = api.listTasks();
+			TasksResponse tasksRsp = api.listTasks(null,null);
+			List<Task> tasks = tasksRsp.getData();
 			LOGGER.log(Level.INFO, "Received {0} tasks", tasks.size());
 			for (Task task : tasks ) {
 				ActionEnum action = task.getAction();
