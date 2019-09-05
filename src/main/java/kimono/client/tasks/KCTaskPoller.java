@@ -2,9 +2,7 @@ package kimono.client.tasks;
 
 import java.util.concurrent.TimeUnit;
 
-import kimono.api.v2.interop.model.TenantInfo;
-import kimono.client.KCInteropDataClientFactory;
-import kimono.client.KCTenantInfoSupplier;
+import kimono.client.KCTenantSupplier;
 
 /**
  * Interface of an Task poller.
@@ -12,29 +10,34 @@ import kimono.client.KCTenantInfoSupplier;
 public interface KCTaskPoller {
 
 	/**
-	 * Initialize the poller
-	 * @param source The supplier of {@link TenantInfo} to poll
-	 * @param authenticator An authenticator to to provide an authenticated ApiClient given a TenantInfo  
+	 * Set the supplier of TenantInfo
+	 * @param topic the topic
 	 */
-	void initialize( KCTenantInfoSupplier source, KCInteropDataClientFactory authenticator );
+	void setTenantInfoSupplier( KCTenantSupplier source );
 	
 	/**
 	 * Register an task handler
 	 * @param topic the topic
 	 */
-	void setTaskHandler( String topic, KCTaskHandler handler );
+	void setTaskHandler( KCTaskType type, KCTaskHandler handler );
 
 	/**
-	 * Register the default event handler to call when no topic-specific handler is registered
+	 * Register the default event handler to call when no task-specific handler is registered
 	 * @param topic the topic
 	 */
 	void setDefaultTaskHandler( KCTaskHandler handler );
+	
+	/**
+	 * Use the managed Tasks API
+	 * @param flag true to use the managed Tasks API, false to use the Tasks Admin API
+	 */
+	void setUseManagedTasksApi( boolean flag );
 
 	/**
 	 * Start the polling loop. Each iteration of the loop requests the next batch
 	 * of Events from Kimono, the delegates to the {@link KCTaskHandler#handle(Event)}
 	 * method of the registered event handler. The Event is acknowledged with the
-	 * {@link KCTaskHandlerResponse} returned by that method.<p>
+	 * {@link KCTaskAck} returned by that method.<p>
 	 * 
 	 * @param interval The number of seconds to wait between polling intervals
 	 */

@@ -1,5 +1,7 @@
 package kimono.client;
 
+import java.util.HashMap;
+
 import kimono.api.v2.broker.MessagesApi;
 import kimono.api.v2.interop.ActorsApi;
 import kimono.api.v2.interop.CloudsApi;
@@ -12,12 +14,15 @@ import kimono.api.v2.interopdata.TasksApi;
 import kimono.api.v2.platform.AccountsApi;
 import kimono.api.v2.sifcloud.ClientsApi;
 import kimono.api.v2.sifcloud.ZonesApi;
+import kimono.client.impl.Credentials;
 
 /**
  * Provides static methods to easily access all Kimono APIs using the correct
  * ApiClient and type of authentication credentials.
  */
 public class KimonoApis {
+
+	private static final int READ_TIMEOUT = 30000;
 
 	private KimonoApis() {
 	}
@@ -29,9 +34,13 @@ public class KimonoApis {
 	 */
 	public static kimono.api.v2.interop.ApiClient getInteropClient(Credentials cred) {
 		requireType(cred, Credentials.Type.ACCOUNT);
-		kimono.api.v2.interop.ApiClient client = kimono.api.v2.interop.Configuration.getDefaultApiClient();
+
+		kimono.api.v2.interop.ApiClient client = new kimono.api.v2.interop.ApiClient();
 		client.setUsername(cred.getUsername());
 		client.setPassword(cred.getPassword());
+		client.setReadTimeout(READ_TIMEOUT);
+		client.setConnectTimeout(READ_TIMEOUT);
+
 		return client;
 	}
 
@@ -42,9 +51,18 @@ public class KimonoApis {
 	 */
 	public static kimono.api.v2.interopdata.ApiClient getInteropDataClient(Credentials cred) {
 		requireType(cred, Credentials.Type.ACTOR);
-		kimono.api.v2.interopdata.ApiClient client = kimono.api.v2.interopdata.Configuration.getDefaultApiClient();
-		client.setUsername(cred.getUsername());
-		client.setPassword(cred.getPassword());
+
+		kimono.api.v2.interopdata.ApiClient client;
+		if (cred.getProto() == Credentials.Proto.BASIC) {
+			client = new kimono.api.v2.interopdata.ApiClient();
+			client.setUsername(cred.getUsername());
+			client.setPassword(cred.getPassword());
+		} else {
+			client = new kimono.api.v2.interopdata.ApiClient(cred.getUsername(), cred.getPassword(), new HashMap<>());
+			client.setAccessToken(cred.getAccessToken());
+		}
+		client.setReadTimeout(READ_TIMEOUT);
+		client.setConnectTimeout(READ_TIMEOUT);
 		return client;
 	}
 
@@ -56,6 +74,8 @@ public class KimonoApis {
 		kimono.api.v2.platform.ApiClient client = kimono.api.v2.platform.Configuration.getDefaultApiClient();
 		client.setUsername(cred.getUsername());
 		client.setPassword(cred.getPassword());
+		client.setReadTimeout(READ_TIMEOUT);
+		client.setConnectTimeout(READ_TIMEOUT);
 		return client;
 	}
 
@@ -63,10 +83,18 @@ public class KimonoApis {
 	 * Get an ApiClient to use for with Broker APIs
 	 */
 	public static kimono.api.v2.broker.ApiClient getBrokerClient(Credentials cred) {
-		requireType(cred, Credentials.Type.ACCOUNT);
-		kimono.api.v2.broker.ApiClient client = kimono.api.v2.broker.Configuration.getDefaultApiClient();
-		client.setUsername(cred.getUsername());
-		client.setPassword(cred.getPassword());
+		kimono.api.v2.broker.ApiClient client;
+		if (cred.getType() == Credentials.Type.ACCOUNT
+				|| (cred.getType() == Credentials.Type.ACTOR && cred.getProto() == Credentials.Proto.BASIC)) {
+			client = new kimono.api.v2.broker.ApiClient();
+			client.setUsername(cred.getUsername());
+			client.setPassword(cred.getPassword());
+		} else {
+			client = new kimono.api.v2.broker.ApiClient(cred.getUsername(), cred.getPassword(), new HashMap<>());
+			client.setAccessToken(cred.getAccessToken());
+		}
+		client.setReadTimeout(READ_TIMEOUT);
+		client.setConnectTimeout(READ_TIMEOUT);
 		return client;
 	}
 
@@ -74,7 +102,7 @@ public class KimonoApis {
 	 * Get an ApiClient to use for with SIF Cloud APIs
 	 */
 	public static kimono.api.v2.sifcloud.ApiClient getSifCloudClient(Credentials cred) {
-		requireType(cred, Credentials.Type.ACCOUNT);
+		requireType(cred, Credentials.Type.ACTOR);
 		kimono.api.v2.sifcloud.ApiClient client = kimono.api.v2.sifcloud.Configuration.getDefaultApiClient();
 		client.setUsername(cred.getUsername());
 		client.setPassword(cred.getPassword());
@@ -263,4 +291,23 @@ public class KimonoApis {
 					"Requires " + (type == Credentials.Type.ACTOR ? "actor" : "account (api key)") + " credentials");
 		}
 	}
+//	
+//	public static URL getUrl( String path ) {
+//		try {
+//			ApiClient client = new kimono.api.v2.interopdata.ApiClient();
+//			client.getBasePath();
+//			OkHttpClient http = client.getHttpClient();
+//			
+//			
+//			StringBuilder b = new StringBuilder();
+//			b.append("http://localhost");
+//			if( !path.startsWith("/") ) {
+//				b.append("/");
+//			}
+//			b.append(path);
+//			return new URL(b.toString());
+//		} catch( MalformedURLException mue ) {
+//			throw new KimonoApiException(mue.getMessage());
+//		}
+//	}
 }

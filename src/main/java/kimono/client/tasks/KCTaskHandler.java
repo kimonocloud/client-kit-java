@@ -1,6 +1,6 @@
 package kimono.client.tasks;
 
-import kimono.api.v2.interopdata.model.Task;
+import kimono.client.KCTenant;
 
 /**
  * Interface of an Event handler.
@@ -22,14 +22,15 @@ public interface KCTaskHandler {
 	/**
 	 * Handle a Task
 	 * 
-	 * @param task The Task
+	 * @param tenant The tenant
+	 * @param task The task
 	 * 
-	 * @return The response, which indicates success or failure as well as an
+	 * @return The acknowledgement, which indicates success or failure as well as an
 	 *         optional message to return to the server. When Interactive Sync is
 	 *         used, the response for an Add event may also include the identifier
 	 *         to assign to the {@code $sys.app_id} of the object (if not provided
 	 *         synchronously, the client must eventually inform Kimono of this
 	 *         identifier by calling Interactive Sync APIs)
 	 */
-	KCTaskHandlerResponse handle(Task task);
+	KCTaskAck handle(KCTenant tenant, KCTask task);
 }

@@ -1,6 +1,6 @@
 package kimono.client;
 
-public class KimonoApiException extends Exception {
+public class KimonoApiException extends RuntimeException {
 
 	private static final long serialVersionUID = 1L;
 

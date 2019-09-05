@@ -1,6 +1,7 @@
 package kimono.client.util;
 
 import kimono.api.v2.interop.model.TenantInfo;
+import kimono.client.KCTenant;
 
 /**
  * TenantInfo utilities
@@ -24,12 +25,16 @@ public class TenantUtils {
 		if (tenant == null)
 			return "<null>";
 		StringBuilder str = new StringBuilder();
-		str.append(tenant.getName()).append(" / ");
+		str.append(tenant.getName()).append("/");
 		if (sIncludeCloudName) {
-			str.append(tenant.getCloud().getName()).append(" / ");
+			str.append(tenant.getCloud().getName()).append("/");
 		}
 		str.append(tenant.getAccount().getName());
 
 		return str.toString();
+	}
+	
+	public static String describe(KCTenant tenant) {
+		return describe(tenant.getTenantInfo());
 	}
 }

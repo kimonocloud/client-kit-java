@@ -1,29 +1,21 @@
 package kimono.client.impl.tasks;
 
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import kimono.api.v2.interop.model.TenantInfo;
-import kimono.api.v2.interopdata.TasksApi;
-import kimono.api.v2.interopdata.model.ErrorType;
-import kimono.api.v2.interopdata.model.Task;
-import kimono.api.v2.interopdata.model.Task.ActionEnum;
-import kimono.api.v2.interopdata.model.TaskAck;
-import kimono.api.v2.interopdata.model.TaskAck.StatusEnum;
-import kimono.api.v2.interopdata.model.TasksResponse;
-import kimono.client.KCInteropDataClientFactory;
-import kimono.client.KCTenantInfoSupplier;
-import kimono.client.KimonoApiException;
+import org.apache.commons.lang3.ObjectUtils;
+
+import kimono.client.KCTenant;
+import kimono.client.KCTenantSupplier;
+import kimono.client.tasks.KCTask;
+import kimono.client.tasks.KCTaskAck;
+import kimono.client.tasks.KCTaskApi;
 import kimono.client.tasks.KCTaskHandler;
-import kimono.client.tasks.KCTaskHandlerResponse;
 import kimono.client.tasks.KCTaskPoller;
-import kimono.client.util.TenantUtils;
+import kimono.client.tasks.KCTaskType;
 
 /**
  * Sample implementation of an Event poller.
@@ -45,27 +37,42 @@ public class TaskPoller implements KCTaskPoller {
 	 * Flag to stop the loop
 	 */
 	private boolean stop;
+	
+	/**
+	 * Use the managed Tasks API? When true Kimono will manage the delivery of
+	 * tasks to clients. This is best for production but is difficult to use during
+	 * development. When false, the Tasks Admin API is used. This is an unmanaged
+	 * API that does not inherently support multiple clients but is very easy to
+	 * use during development and can also be used in production as long as a
+	 * single client app is run. If you need to scale up multiple clients, use the
+	 * managed Tasks API or provide a more sophisticated TaskPoller implementation
+	 * that can coordinate work among your clients.
+	 */
+	private boolean useManagedTasksApi = false;
 
 	/**
-	 * Default IEventHandler
+	 * Default Task Handler
 	 */
 	private KCTaskHandler defaultHandler;
 
 	/**
-	 * IEventHandler for each topic
+	 * Task Handlers by type
 	 */
-	private Map<String, KCTaskHandler> handlers = new HashMap<>();
+	private Map<KCTaskType, KCTaskHandler> handlers = new HashMap<>();
 
 	/**
 	 * Identifies one or more tenants to poll for events
 	 */
-	private KCTenantInfoSupplier tenantInfoSupplier;
+	private KCTenantSupplier tenantSupplier;
 
-	/**
-	 * Returns an authenticated ApiClient given a tenant
-	 */
-	private KCInteropDataClientFactory authenticator;
-
+	public TaskPoller() {
+		super();
+	}
+	
+	public TaskPoller( KCTenantSupplier supplier ) {
+		setTenantInfoSupplier(supplier);
+	}
+	
 	/**
 	 * Register an event handler
 	 * 
@@ -73,8 +80,8 @@ public class TaskPoller implements KCTaskPoller {
 	 *            the topic
 	 */
 	@Override
-	public void setTaskHandler(String topic, KCTaskHandler handler) {
-		handlers.put(topic, handler);
+	public void setTaskHandler(KCTaskType type, KCTaskHandler handler) {
+		handlers.put(type, handler);
 	}
 
 	@Override
@@ -83,16 +90,13 @@ public class TaskPoller implements KCTaskPoller {
 	}
 
 	@Override
-	public void initialize(KCTenantInfoSupplier supplier, KCInteropDataClientFactory auth) {
-		if (supplier == null) {
-			throw new IllegalArgumentException("TenantInfoSupplier is required");
-		}
-		tenantInfoSupplier = supplier;
-
-		if (auth == null) {
-			throw new IllegalArgumentException("ActorAuthenticator is required");
-		}
-		authenticator = auth;
+	public void setTenantInfoSupplier(KCTenantSupplier supplier) {
+		tenantSupplier = supplier;
+	}
+	
+	@Override
+	public void setUseManagedTasksApi(boolean flag) {
+		useManagedTasksApi = flag;
 	}
 
 	/**
@@ -108,8 +112,8 @@ public class TaskPoller implements KCTaskPoller {
 	 */
 	@Override
 	public synchronized void poll(int interval, TimeUnit unit) throws Exception {
-		if (tenantInfoSupplier == null) {
-			throw new IllegalStateException("Poller has not been initialized");
+		if (tenantSupplier == null) {
+			throw new IllegalStateException("No supplier of TenantInfo");
 		}
 		do {
 			// Iterator all tenants...
@@ -134,72 +138,34 @@ public class TaskPoller implements KCTaskPoller {
 	}
 
 	/**
-	 * Poll each Kimono Integration tenant supplied by the ITenantInfoSupplier
-	 * for pending events.
-	 * 
-	 * @throws ApiException
-	 *             if a non-retryable error is encountered connecting to Kimono
+	 * Poll the next page of Tasks for each tenant
 	 */
-	protected void pollTenants() throws KimonoApiException {
-		Collection<TenantInfo> tenants;
-		try {
-			tenants = tenantInfoSupplier.get();
-		} catch (Exception ex) {
-			throw new KimonoApiException("Error getting tenant info",ex); // TODO: Determine if retryable
-		}
-
-		if (tenants != null) {
-			for (TenantInfo tenant : tenants) {
-				TasksApi api = getTasksApi(tenant);
-				if (api != null) {
-					getTasks(api, tenant);
-				}
+	protected void pollTenants() {
+		tenantSupplier.reset();
+		while( tenantSupplier.hasNext() ) {
+			KCTenant tenant = tenantSupplier.next();
+			KCTaskApi tasks = newTaskApi(tenant);
+			while( tasks.hasNext() ) {
+				KCTask task = tasks.next();
+				KCTaskAck ack = delegateTask(tenant,task);
+				tasks.ackTask(task,ack);
 			}
 		}
 	}
-
-	protected TasksApi getTasksApi(TenantInfo tenant) {
-		return new TasksApi(authenticator.authenticate(tenant));
-	}
-
-	protected void getTasks(TasksApi api, TenantInfo tenant) {
-		try {
-			LOGGER.log(Level.INFO, "Polling: {0}", TenantUtils.describe(tenant));
-			TasksResponse tasksRsp = api.listTasks(null,null);
-			List<Task> tasks = tasksRsp.getData();
-			LOGGER.log(Level.INFO, "Received {0} tasks", tasks.size());
-			for (Task task : tasks ) {
-				ActionEnum action = task.getAction();
-				String batch = task.getBatchId();
-				String topic = task.getTopic();
-				UUID id = task.getId();
-				Object data = task.getData();
-				KCTaskHandler handler = handlers.get(topic);
-				if (handler == null) {
-					handler = defaultHandler;
-				}
-
-				KCTaskHandlerResponse rsp = handler.handle(task);
-
-				TaskAck ack = new TaskAck();
-				ack.setMessage("It did not worked");
-				ack.setStatus(StatusEnum.ERROR);
-				
-				ErrorType error = new ErrorType();
-				error.setCode("APP101");
-				error.setMessage("Could not update record");
-				error.setExtMessage("Student: Eric Petersen");
-				error.setDetails("id=42");
-				ack.setError(error);
-				
-				Map<String, String> params = new HashMap<>();
-				params.put("$sys.app_id", "42");
-				ack.setParams(params);
-
-				api.acknowledgeTask(id, ack);
-			}
-		} catch (Exception ex) {
-			LOGGER.log(Level.SEVERE, "Unexpected API error", ex);
+	
+	protected KCTaskApi newTaskApi( KCTenant tenant ) {
+		if( useManagedTasksApi ) {
+			return new AdminTasksApiNonOAS(tenant);
+		} else {
+			return new AdminTasksApiNonOAS(tenant);
 		}
+	}
+	
+	protected KCTaskAck delegateTask( KCTenant tenant, KCTask tsk ) {
+		KCTaskHandler handler = ObjectUtils.firstNonNull(handlers.get(tsk.getType()),defaultHandler);
+		if( handler != null ) {
+			return handler.handle(tenant,tsk);
+		}
+		return null;
 	}
 }
