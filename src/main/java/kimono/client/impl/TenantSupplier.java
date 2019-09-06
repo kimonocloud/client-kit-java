@@ -79,8 +79,18 @@ public class TenantSupplier extends AbstractSupplier<KCTenant> implements KCTena
 			morePages = rsp.getPaging().getNext() != null;
 			
 			// Convert to a list of KCTenant
-			List<KCTenant> tenants = new ArrayList<>();
+			final List<KCTenant> tenants = new ArrayList<>();
 			rsp.getData().forEach(ti->tenants.add(wrap(ti)));
+			
+			// TODO: The integrations filter is not being respected, so 
+			// this is a temporary bandaid to perform the filtering on the 
+			// client.
+			if( !integrations.isEmpty() ) {
+				return tenants.stream().
+						filter(t->integrations.contains(t.getTenantInfo().getIntegration().getName())).
+						collect(Collectors.toList());
+			}
+			
 			return tenants;
 		} catch (ApiException ex) {
 			throw new KimonoApiException(ex);
