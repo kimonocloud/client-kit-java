@@ -1,5 +1,7 @@
 package kimono.client.impl;
 
+import org.apache.commons.lang3.StringUtils;
+
 import kimono.client.KCDriverInfo;
 import kimono.client.KCDriverProperties;
 import kimono.client.impl.tasks.TaskPoller;
@@ -47,7 +49,11 @@ public abstract class AbstractDriver {
 	 */
 	public void run() throws Exception {
 		
-		KCTaskPoller poller = new TaskPoller(new TenantSupplier().forIntegrations(driverInfo.getName()));
+		
+		KCTaskPoller poller = new TaskPoller(new TenantSupplier().
+				forTenants(props.getTenantIds()).
+				forAccounts(props.getAccountIds()).
+				forIntegrations(driverInfo.getName()));
 		
 		// Let the concrete class set up task handlers
 		configureTaskHandlers(poller);
@@ -66,5 +72,30 @@ public abstract class AbstractDriver {
 	 * Called to create a {@link KCDriverInfo} describing this driver
 	 */
 	protected abstract KCDriverInfo newDriverInfo();
+	
+	/**
+	 * Apply any options specified on the command-line or environment
+	 */
+	public AbstractDriver parseCommandLine( String[] args ) {
+		for( int i = 0; i < args.length; i++ ) {
+			if( args[i].charAt(0) == '-' ) {
+				String[] parts = StringUtils.split(args[i].substring(1),':');
+				applyCommandLineOption(parts[0], parts.length == 2 ? parts[1] : null);
+			} else {
+				applyCommandLineOption(args[i], null);
+			}
+		}
+		return this;
+	}
+	
+	/**
+	 * Apply a command-line option in the form {@code -name:value}
+	 * @param name The option name
+	 * @param value The option value
+	 */
+	protected void applyCommandLineOption( String name, String value ) {
+		props.setOption(name, value);
+	}
 }
+
 
