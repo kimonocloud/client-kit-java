@@ -3,6 +3,7 @@ package kimono.client.impl.tasks;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,16 +38,16 @@ public class TaskPoller implements KCTaskPoller {
 	 * Flag to stop the loop
 	 */
 	private boolean stop;
-	
+
 	/**
-	 * Use the managed Tasks API? When true Kimono will manage the delivery of
-	 * tasks to clients. This is best for production but is difficult to use during
+	 * Use the managed Tasks API? When true Kimono will manage the delivery of tasks
+	 * to clients. This is best for production but is difficult to use during
 	 * development. When false, the Tasks Admin API is used. This is an unmanaged
-	 * API that does not inherently support multiple clients but is very easy to
-	 * use during development and can also be used in production as long as a
-	 * single client app is run. If you need to scale up multiple clients, use the
-	 * managed Tasks API or provide a more sophisticated TaskPoller implementation
-	 * that can coordinate work among your clients.
+	 * API that does not inherently support multiple clients but is very easy to use
+	 * during development and can also be used in production as long as a single
+	 * client app is run. If you need to scale up multiple clients, use the managed
+	 * Tasks API or provide a more sophisticated TaskPoller implementation that can
+	 * coordinate work among your clients.
 	 */
 	private boolean useManagedTasksApi = false;
 
@@ -54,6 +55,12 @@ public class TaskPoller implements KCTaskPoller {
 	 * Default Task Handler
 	 */
 	private KCTaskHandler defaultHandler;
+
+	/**
+	 * Optional Predicate to be called for each {@link KCTenant} prior to requesting
+	 * tasks
+	 */
+	private Predicate<KCTenant> predicate;
 
 	/**
 	 * Task Handlers by type
@@ -68,16 +75,15 @@ public class TaskPoller implements KCTaskPoller {
 	public TaskPoller() {
 		super();
 	}
-	
-	public TaskPoller( KCTenantSupplier supplier ) {
+
+	public TaskPoller(KCTenantSupplier supplier) {
 		setTenantInfoSupplier(supplier);
 	}
-	
+
 	/**
 	 * Register an event handler
 	 * 
-	 * @param topic
-	 *            the topic
+	 * @param topic the topic
 	 */
 	@Override
 	public void setTaskHandler(KCTaskType type, KCTaskHandler handler) {
@@ -93,22 +99,21 @@ public class TaskPoller implements KCTaskPoller {
 	public void setTenantInfoSupplier(KCTenantSupplier supplier) {
 		tenantSupplier = supplier;
 	}
-	
+
 	@Override
 	public void setUseManagedTasksApi(boolean flag) {
 		useManagedTasksApi = flag;
 	}
 
 	/**
-	 * Start the polling loop. Each iteration of the loop requests the next
-	 * batch of Events from Kimono for each Integration tenant. Each Event is
-	 * delegated to the {@link KCTaskHandler#handle(Event)} method of the
-	 * registered event handler. The Event is acknowledged with the
-	 * {@link KCTaskHandlerResponse} returned by that method.
+	 * Start the polling loop. Each iteration of the loop requests the next batch of
+	 * Events from Kimono for each Integration tenant. Each Event is delegated to
+	 * the {@link KCTaskHandler#handle(Event)} method of the registered event
+	 * handler. The Event is acknowledged with the {@link KCTaskHandlerResponse}
+	 * returned by that method.
 	 * <p>
 	 * 
-	 * @param interval
-	 *            The number of seconds to wait between polling intervals
+	 * @param interval The number of seconds to wait between polling intervals
 	 */
 	@Override
 	public synchronized void poll(int interval, TimeUnit unit) throws Exception {
@@ -142,30 +147,45 @@ public class TaskPoller implements KCTaskPoller {
 	 */
 	protected void pollTenants() {
 		tenantSupplier.reset();
-		while( tenantSupplier.hasNext() ) {
+		while (tenantSupplier.hasNext()) {
 			KCTenant tenant = tenantSupplier.next();
-			KCTaskApi tasks = newTaskApi(tenant);
-			while( tasks.hasNext() ) {
-				KCTask task = tasks.next();
-				KCTaskAck ack = delegateTask(tenant,task);
-				tasks.ackTask(task,ack);
+
+			// If a predicate is specified it must approve the tenant
+			if (predicate == null || predicate.test(tenant)) {
+				KCTaskApi tasks = newTaskApi(tenant);
+				while (tasks.hasNext()) {
+					KCTask task = tasks.next();
+					KCTaskAck ack = delegateTask(tenant, task);
+					tasks.ackTask(task, ack);
+				}
 			}
 		}
 	}
-	
-	protected KCTaskApi newTaskApi( KCTenant tenant ) {
-		if( useManagedTasksApi ) {
+
+	protected KCTaskApi newTaskApi(KCTenant tenant) {
+		if (useManagedTasksApi) {
 			return new AdminTasksApiNonOAS(tenant);
 		} else {
 			return new AdminTasksApiNonOAS(tenant);
 		}
 	}
-	
-	protected KCTaskAck delegateTask( KCTenant tenant, KCTask tsk ) {
-		KCTaskHandler handler = ObjectUtils.firstNonNull(handlers.get(tsk.getType()),defaultHandler);
-		if( handler != null ) {
-			return handler.handle(tenant,tsk);
+
+	protected KCTaskAck delegateTask(KCTenant tenant, KCTask tsk) {
+		KCTaskHandler handler = ObjectUtils.firstNonNull(handlers.get(tsk.getType()), defaultHandler);
+		if (handler != null) {
+			try {
+				return handler.handle(tenant, tsk);
+			} catch( Exception ex ) {
+				// Uncaught exception must ack the task (as an error) to avoid deadlock
+				return TaskAck.error("Unexpected error",ex);
+			}
 		}
-		return null;
+		
+		return TaskAck.success();
+	}
+
+	@Override
+	public void setPredicate(Predicate<KCTenant> predicate) {
+		this.predicate = predicate;
 	}
 }

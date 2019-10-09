@@ -85,6 +85,18 @@ public class Task implements KCTask {
 			schema = Version.valueOf(task.getString(SCHEMA));
 		} else {
 			schema = Version.forIntegers(1);
+			
+			// TODO: REMOVE: There are some malformed Tasks that were created in 
+			// production for a very short period of time, in which the schema was
+			// found not at the root but within the first element (e.g. "lifecycle_event.schema")
+			// Check for that condition but this code can go away soon.
+			if( task.length() == 1 ) {
+				String key = task.keys().next();
+				JSONObject inner = task.getJSONObject(key);
+				if( inner != null && inner.has(SCHEMA) ) {
+					schema = Version.valueOf(inner.getString(SCHEMA));
+				}
+			}
 		}
 
 		if (schema.getMajorVersion() == 1 || schema.getMajorVersion() == 2) {

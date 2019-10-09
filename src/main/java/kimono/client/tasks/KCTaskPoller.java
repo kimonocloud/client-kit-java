@@ -1,7 +1,9 @@
 package kimono.client.tasks;
 
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
+import kimono.client.KCTenant;
 import kimono.client.KCTenantSupplier;
 
 /**
@@ -26,6 +28,16 @@ public interface KCTaskPoller {
 	 * @param topic the topic
 	 */
 	void setDefaultTaskHandler( KCTaskHandler handler );
+	
+	/**
+	 * Set an optional Predicate to be called for each {@link KCTenant} prior to 
+	 * requesting tasks.<p>
+	 * 
+	 * Use a Predicate to optionally filter tenants based on application or driver
+	 * state that is not known to Kimono. For example, your application may have 
+	 * designated a tenant as being off-line.
+	 */
+	void setPredicate( Predicate<KCTenant> predicate );
 	
 	/**
 	 * Use the managed Tasks API
