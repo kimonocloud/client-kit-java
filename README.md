@@ -1,6 +1,6 @@
 # api-client-kit
 
-The Client Kit for Java is a framework for implementing a Java-based driver for your Kimono 
+Client Kit is a framework for implementing a Java-based driver for your Kimono 
 Integration. It's not required to implement a Kimono Integration but is highly recommended 
 for developers using Java. The Client Kit handles the low-level details of implementing a
 scalable driver, including:
@@ -23,7 +23,7 @@ Creating a simple Integration driver is easy:
 
 2. Derive a class from the `AbstractDriver` base class and implement its `main` method to parse the command-line.
 
-3. Write one or more functions to process Tasks.
+3. Write one or more task handler functions to process Tasks
 
 4. Set the `KIMONO_API_KEY` environment variable.
 
@@ -32,36 +32,38 @@ These steps are covered in greater detail below. Refer to the `simple-driver` pr
 ```
 public void MyDriver extends AbstractDriver {
 
-	@Override protected KCDriverInfo newDriverInfo() {
-		return new KCDriverInfo("MyDriver");
-	}
+  @Override 
+  protected KCDriverInfo newDriverInfo() {
+    return new KCDriverInfo("MyDriver");
+  }
 
-	@Override protected void configureTaskHandlers(KCTaskPoller poller) {
+  @Override
+  protected void configureTaskHandlers(KCTaskPoller poller) {
 
-		// Handle Sync Start/Sync End events
-		poller.setTaskHandler(KCTaskType.SYNC_EVENT, this::handleSyncEvent);
+    // Handle Sync Start/Sync End events
+    poller.setTaskHandler(KCTaskType.SYNC_EVENT, this::handleSyncEvent);
 
-		// Handle Data Events
-		poller.setTaskHandler(KCTaskType.DATA_EVENT, this::handleDataEvent);
-	}    
+    // Handle Data Events
+    poller.setTaskHandler(KCTaskType.DATA_EVENT, this::handleDataEvent);
+  }    
 
-    protected KCTaskAck handleSyncEvent( KCTenant tenant, KCTask task ) {
-        System.out.println("Got a Sync Start/Sync End event: "+task);
-        return TaskAck.success();
+  protected KCTaskAck handleSyncEvent( KCTenant tenant, KCTask task ) {
+    ...
+    return TaskAck.success();
+  }
+
+  protected KCTaskAck handleDataEvent( KCTenant tenant, KCTask task ) {
+    ...
+    return TaskAck.success();
+  }
+
+  public static void main(String[] args) {
+    try {
+        new MyDriver().parseCommandLine(args).run();
+    } catch (Exception ex) {
+        System.err.println(ex);
     }
-
-    protected KCTaskAck handleDataEvent( KCTenant tenant, KCTask task ) {
-        System.out.println("Got a Data Event: "+task);
-        return TaskAck.success();
-    }
-    
-	public static void main(String[] args) {
-		try {
-			new MyDriver().parseCommandLine(args).run();
-		} catch (Exception ex) {
-			System.err.println(ex);
-		}
-	}    
+  }    
 }
 ```
 
@@ -88,7 +90,7 @@ Client Kit selects only those tenants that have the Integration name you specify
 
 ```
 @Override protected KCDriverInfo newDriverInfo() {
-	return new KCDriverInfo("MyDriver");
+  return new KCDriverInfo("MyDriver");
 }
 ```
 
@@ -115,11 +117,11 @@ You can perform your own filtering of tenants by implementing a Predicate. The T
 ```
 @Override protected void configureTaskHandlers( KCTaskPoller poller ) {
 
-    // Only process tenants if customers that are enabled in my app
-    poller.setPredicate(tenant->{
-        String myCustomerNumber = tenant.getTenantInfo().getAccount().getUserdata();
-        return isCustomerEnabled(myCustomerNumber);
-    }
+  // Only process tenants if customers that are enabled in my app
+  poller.setPredicate(tenant->{
+    String myCustomerNumber = tenant.getTenantInfo().getAccount().getUserdata();
+    return isCustomerEnabled(myCustomerNumber);
+  }
 }
 ```
 
@@ -139,14 +141,14 @@ The primary job of a Driver is to process the Tasks in each Integration tenant's
 @Override
 protected void configureTaskHandlers(KCTaskPoller poller) {
     
-    // Handle Sync Start/Sync End events
-    poller.setTaskHandler(KCTaskType.SYNC_EVENT, this::handleSyncEvent);
+  // Handle Sync Start/Sync End events
+  poller.setTaskHandler(KCTaskType.SYNC_EVENT, this::handleSyncEvent);
 }
 
 protected KCTaskAck handleSyncEvent( KCTenant tenant, KCTask task ) {
     
-    ...
-    return TaskAck.success();
+  ...
+  return TaskAck.success();
 }
 ```
 
@@ -157,24 +159,26 @@ The `kimono.client.tasks.KCTask` interface encapsulates a task.
 ```
 protected KCTaskAck handleDataEvent( KCTenant tenant, KCTask task ) {
 
-    // Task ID
-    UUID id = task.getId();
+  // Task ID
+  UUID id = task.getId();
 
-    // Task Type and Action
-    KCTaskType type = task.getType();
-    KCTaskAction action = task.getAction();
+  // Task Type and Action
+  KCTaskType type = task.getType();
+  KCTaskAction action = task.getAction();
 
-    // Topic, current attributes of this data object, and prior values of changed attributes
-    KCTopic topic = task.getTopic();
-    JSONObject attrs = task.getAttributes();
-    JSONObject diffs = task.getChanges();
+  // Topic and current attributes of this data object
+  KCTopic topic = task.getTopic();
+  JSONObject attrs = task.getAttributes();
 
-    // Other info
-    KCTaskOrigin origin = task.getOrigin();
-    String schema = task.getSchemaVersion();
-    String groupId = task.getGroupId();
+  // Prior values of changed attributes
+  JSONObject diffs = task.getChanges();
 
-    return TaskAck.success();
+  // Other info
+  KCTaskOrigin origin = task.getOrigin();
+  String schema = task.getSchemaVersion();
+  String groupId = task.getGroupId();
+
+  return TaskAck.success();
 }
 ```
 
