@@ -29,7 +29,7 @@ Creating a simple Integration driver is easy:
 
 These steps are covered in greater detail below. Refer to the `simple-driver` project for a working example.
 
-```
+```java
 public void MyDriver extends AbstractDriver {
 
   @Override 
@@ -88,7 +88,7 @@ Client Kit handles discovering which tenants to process by calling the `listTena
 
 Client Kit selects only those tenants that have the Integration name you specify in the `newDriverInfo` method. 
 
-```
+```java
 @Override protected KCDriverInfo newDriverInfo() {
   return new KCDriverInfo("MyDriver");
 }
@@ -114,14 +114,14 @@ $ MyDriver -tenant:00300bb7-70ab-43cf-a950-1a216cc4e82a
 
 You can perform your own filtering of tenants by implementing a Predicate. The Task Loop will only enumerate tasks for tenants that satisfy your filter. The following example obtains a "customer number" from the Account associated with this tenant and returns true if that customer is enabled or not (presumably checking some state in your application).
 
-```
+```java
 @Override protected void configureTaskHandlers( KCTaskPoller poller ) {
 
   // Only process tenants if customers that are enabled in my app
   poller.setPredicate(tenant->{
     String myCustomerNumber = tenant.getTenantInfo().getAccount().getUserdata();
     return isCustomerEnabled(myCustomerNumber);
-  }
+  });
 }
 ```
 
@@ -129,7 +129,7 @@ You can perform your own filtering of tenants by implementing a Predicate. The T
 
 The `kimono.client.KCTenant` interface encapsulates a tenant; that is, a single instance of your Integration installed in an Interop Cloud. You can access the underlying Kimono API-provided tenant information by calling `getTenantInfo()`:
 
-```
+```java
 tenant.getTenantInfo().getAccount().getUserdata();
 ```
 
@@ -137,7 +137,7 @@ tenant.getTenantInfo().getAccount().getUserdata();
 
 The primary job of a Driver is to process the Tasks in each Integration tenant's Task Queue. Client Kit takes care of selecting tenants and requesting tasks, while you take care of writing code to respond to each Task. This is accomplished by registering `KCTaskHandler` in the `configureTaskHandlers` method. Task Handlers receive a `KCTenant` and `KCTask` pair and respond with a `KCTaskAck`.
 
-```
+```java
 @Override
 protected void configureTaskHandlers(KCTaskPoller poller) {
     
@@ -156,7 +156,7 @@ protected KCTaskAck handleSyncEvent( KCTenant tenant, KCTask task ) {
 
 The `kimono.client.tasks.KCTask` interface encapsulates a task.
 
-```
+```java
 protected KCTaskAck handleDataEvent( KCTenant tenant, KCTask task ) {
 
   // Task ID
@@ -192,19 +192,20 @@ Scalable client implementations should offload tasks from Kimono to other infras
 
 The `kimono.client.tasks.KCTaskAck` interface encapsulates a tack ack. Use the concrete `kimono.client.impl.tasks.TaskAck` implementation to return a Success, Error, or Retry acknowledgement.
 
-```
+```java
 protected KCTaskAck handleSyncEvent( KCTenant tenant, KCTask task ) {
-    
-    try {
-        // Handle this task...
 
-        // Success!        
-        return TaskAck.success();
-    } catch( Exception ex ) {
+  try {
+    // Handle this task...
 
-        // Error
-        return TaskAck.error("Failed to process", ex);
-    }
+    // Success!        
+    return TaskAck.success();
+
+  } catch( Exception ex ) {
+      
+    // Error
+    return TaskAck.error("Failed to process", ex);
+  }
 }
 ```
 
@@ -212,13 +213,13 @@ protected KCTaskAck handleSyncEvent( KCTenant tenant, KCTask task ) {
 
 A simple success ack:
 
-```
+```java
 return TaskAck.success();
 ```
 
 A success ack with optional message:
 
-```
+```java
 return TaskAck.success("John Doe added with ID 8858");
 ```
 
@@ -226,7 +227,7 @@ return TaskAck.success("John Doe added with ID 8858");
 
 An error acknowledgement must include a message, which is displayed beneath the task on the Synchronization tab in Dashboard.
 
-```
+```java
 return TaskAck.error("Invalid email address");
 ```
 
@@ -234,7 +235,7 @@ return TaskAck.error("Invalid email address");
 
 A retry acknowledgement must include a message, which is displayed beneath the task on the Synchronization tab in Dashboard.
 
-```
+```java
 return TaskAck.retry("My App is in temporarily unavailable for maintenance");
 ```
 
