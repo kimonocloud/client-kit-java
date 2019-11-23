@@ -188,4 +188,9 @@ public class Task implements KCTask {
 	public KCTaskOrigin getOrigin() {
 		return payload.has("origin") ? KCTaskOrigin.valueOf(payload.getString("origin").toUpperCase()) : null;
 	}
+	
+	@Override
+	public String toString() {
+		return getId().toString();
+	}
 }

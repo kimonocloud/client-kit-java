@@ -18,7 +18,6 @@ public abstract class AbstractSupplier<T> implements KCSupplier<T> {
 	
 	/**
 	 * The current page
-	 * 
 	 */
 	private List<T> data;
 	
@@ -26,7 +25,7 @@ public abstract class AbstractSupplier<T> implements KCSupplier<T> {
 	public synchronized void reset() {
 		page = 0;
 		data = fetch(page);
-		cursor = data.isEmpty() ? -1 : 0;
+		cursor = initCursor(data);
 	}
 	
 	@Override
@@ -34,17 +33,25 @@ public abstract class AbstractSupplier<T> implements KCSupplier<T> {
 		if( data == null ) {
 			reset();
 		}
-		return( data != null && cursor >= 0 && cursor < data.size() ) || hasMorePages();
+		return hasCursor() || hasMorePages();
 	}
 	
+	private boolean hasCursor() {
+		return ( data != null && cursor >= 0 && cursor < data.size() );
+	}
+
+	private int initCursor( List<T> data ) {
+		return data == null || data.isEmpty() ? -1 : 0;
+	}
+
 	@Override
 	public synchronized T next() {
-		if( data != null && cursor < data.size() ) {
+		if( hasCursor() ) {
 			return data.get(cursor++);
 		}
 		if( hasMorePages() ) {
-			cursor = 0;
-			fetch(page++);
+			data = fetch(++page);
+			cursor = initCursor(data);
 			return next();
 		} 
 		return null;
