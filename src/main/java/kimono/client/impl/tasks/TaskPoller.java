@@ -184,6 +184,7 @@ public class TaskPoller implements KCTaskPoller {
 				return handler.handle(tenant, tsk);
 			} catch( Exception ex ) {
 				// Uncaught exception must ack the task (as an error) to avoid deadlock
+				LOGGER.log(Level.SEVERE,ex.getMessage());
 				return TaskAck.error("Unexpected error",ex);
 			}
 		}
