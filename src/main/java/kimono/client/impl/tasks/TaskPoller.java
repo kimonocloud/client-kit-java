@@ -155,8 +155,15 @@ public class TaskPoller implements KCTaskPoller {
 				KCTaskApi tasks = newTaskApi(tenant);
 				while (tasks.hasNext()) {
 					KCTask task = tasks.next();
-					KCTaskAck ack = delegateTask(tenant, task);
-					tasks.ackTask(task, ack);
+					if( task != null ) {
+						// Note it is possible for hasNext() to return true because
+						// it believes another page is available from the server, but
+						// when queried the server return no results and therefore
+						// next() returns null. Do not assume hasNext() means next()
+						// will return a non-null value.
+						KCTaskAck ack = delegateTask(tenant, task);
+						tasks.ackTask(task, ack);
+					}
 				}
 			}
 		}

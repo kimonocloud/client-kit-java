@@ -6,6 +6,8 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.apache.http.HttpStatus;
 import org.json.JSONArray;
@@ -32,6 +34,8 @@ import kong.unirest.JsonNode;
 import kong.unirest.Unirest;
 
 public class AdminTasksApiNonOAS extends AbstractSupplier<KCTask> implements KCTaskApi {
+
+	private static final Logger LOGGER = Logger.getLogger(TaskPoller.class.getName());
 
 	/**
 	 * When using Actor Authentication: the tenant to supply tasks for
@@ -71,9 +75,10 @@ public class AdminTasksApiNonOAS extends AbstractSupplier<KCTask> implements KCT
 		// here with the Admin Tasks API as well. However, keep in mind it is possible
 		// to specify this value and increase it to 2000 with the Admin Tasks API.
 		int pageSize = 100;
-		morePages = false;
 		int status = 0;
 		int retries = 0;
+		
+		this.morePages = false;
 
 		do {
 			try {
@@ -114,6 +119,8 @@ public class AdminTasksApiNonOAS extends AbstractSupplier<KCTask> implements KCT
 			}
 		} while (status == HttpStatus.SC_UNAUTHORIZED && retries++ < 3);
 
+		LOGGER.log(Level.INFO, "Received "+tasks.size()+" tasks (morePages="+morePages+")");
+		
 		return tasks;
 	}
 
