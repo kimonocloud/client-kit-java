@@ -46,6 +46,12 @@ public class AdminTasksApiNonOAS extends AbstractSupplier<KCTask> implements KCT
 	 * Are more pages available to fetch?
 	 */
 	private boolean morePages = true;
+	
+	/**
+	 * "read only" mode
+	 * @see #setReadOnly(boolean)
+	 */
+	private boolean readOnly = false;
 
 	/**
 	 * Construct a {@link KCTaskApi} implementation to retrieve tasks for a specific
@@ -63,6 +69,17 @@ public class AdminTasksApiNonOAS extends AbstractSupplier<KCTask> implements KCT
 
 	protected URL getTaskAckURL(Credentials cred, UUID id) throws MalformedURLException {
 		return new URL(KimonoApis.getInteropDataClient(cred).getBasePath() + "/tasks/admin/" + id + "/ack");
+	}
+
+	/**
+	 * Set "read only" mode. Set to true for tools that read Tasks from Kimono but do not 
+	 * process and acknowledge them. When true the {@link #fetch(int)} method honors the 
+	 * page number passed to it. When false (the default), page zero is the only page 
+	 * retrieved to ensure all tasks are processed and acknowledged in order.
+	 */
+	public AdminTasksApiNonOAS setReadOnly( boolean readOnly ) {
+		this.readOnly = readOnly;
+		return this;
 	}
 
 	@Override
@@ -89,9 +106,14 @@ public class AdminTasksApiNonOAS extends AbstractSupplier<KCTask> implements KCT
 				// Authenticate
 				GetRequest getReq = authorize(Unirest.get(url.toString()), cred);
 
-				// Get this page
+				// IMPORTANT: The Tasks Admin API allows the client to control paging, which 
+				// facilitates writing administrative tools for inspecting message/task queues. 
+				// However, when used to consume and process tasks, those tasks will be ack'd as 
+				// soon as they are processed. Consequently, it is page 0 and always page 0 that 
+				// should be processed. The page parameter to this method is used only for logging
+				// purposes but page 0 is always specified on the URL.
 				HttpResponse<JsonNode> jsonResponse = getReq.header("accept", "application/json")
-						.queryString("page", page).queryString("page_size", pageSize).asJson();
+						.queryString("page", readOnly ? page : 0).queryString("page_size", pageSize).asJson();
 
 				// Convert the response to an array of KCTasks
 				status = jsonResponse.getStatus();
@@ -119,7 +141,7 @@ public class AdminTasksApiNonOAS extends AbstractSupplier<KCTask> implements KCT
 			}
 		} while (status == HttpStatus.SC_UNAUTHORIZED && retries++ < 3);
 
-		LOGGER.log(Level.INFO, "Received "+tasks.size()+" tasks (morePages="+morePages+")");
+		LOGGER.log(Level.INFO, "[Page "+page+"] Received "+tasks.size()+" tasks (morePages="+morePages+")");
 		
 		return tasks;
 	}
