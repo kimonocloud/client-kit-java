@@ -6,5 +6,7 @@ public enum KCTaskType {
 	
 	SYNC_EVENT,
 	
-	DATA_EVENT
+	DATA_EVENT,
+	
+	GRADES_QUERY
 }

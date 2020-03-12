@@ -2,6 +2,8 @@ package kimono.client.tasks;
 
 public enum KCTaskAction {
 
+	NOT_APPLICABLE,
+	
 	// Lifecycle Event actions
 	
 	TENANT_INSTALLED,
