@@ -27,4 +27,6 @@ public interface KCTask {
 	String getGroupId();
 	
 	long getSequence();
+	
+	JSONObject getPayload();
 }

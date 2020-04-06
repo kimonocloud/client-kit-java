@@ -191,6 +191,20 @@ public class Task implements KCTask {
 	
 	@Override
 	public String toString() {
-		return getId().toString();
+		StringBuilder b = new StringBuilder();
+		b.append(getType().toString()).append(":").append(getAction().toString());
+		if( getTopic() != null ) {
+			b.append(" ").append(getTopic().toString());
+		}
+		b.append(" [id=").append(getId().toString()).append("]");
+		if( payload != null ) {
+			b.append("\r\n").append(payload.toString(2));
+		}
+		return b.toString();
+	}
+
+	@Override
+	public JSONObject getPayload() {
+		return payload;
 	}
 }
