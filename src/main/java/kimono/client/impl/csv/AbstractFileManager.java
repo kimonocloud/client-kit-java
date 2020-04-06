@@ -23,6 +23,8 @@ import kimono.client.tasks.KCTask;
  */
 public abstract class AbstractFileManager implements KCFileManager, AutoCloseable {
 
+	public static final String OPT_ARCHIVE_FILES = "files.archive";
+	
 	/**
 	 * Driver properties
 	 */
@@ -59,7 +61,7 @@ public abstract class AbstractFileManager implements KCFileManager, AutoCloseabl
 	 * The {@link KCFile} factory to use to create new instances
 	 */
 	private KCFileManager.Supplier fileSupplier;
-		
+	
 	public AbstractFileManager( KCTenant tenant, KCDriverProperties props ) {
 		this.props = props;
 		this.tenant = tenant;
@@ -167,16 +169,35 @@ public abstract class AbstractFileManager implements KCFileManager, AutoCloseabl
 	public void setFolder( File folder ) {
 		outputFolder = folder;
 	}
-
+	
+	public File getArchiveFolder() {
+		return new File(getFolder(),"archive");
+	}
+	
 	@Override
-	public void commitFiles() {
+	public void commitFiles() throws IOException {
 		
-		File archiveFolder = new File(outputFolder,"archive");
+		// Ask each file to commit
+		for( KCFile file : files.values() ) {
+			file.commit();
+		}
+
+		// Copy each file to the archive folder
+		archiveFiles();
+		
+		// Delete files so the next set of files received is not appended to 
+		// the existing set
+		deleteFiles();
+	}
+	
+	protected void archiveFiles() throws IOException {
+		
+		File archiveFolder = getArchiveFolder();
 		if( archiveFolder.exists() ) {
 			try {
 				FileUtils.deleteDirectory(archiveFolder);
 			} catch( IOException ioe ) {
-				System.err.println("Error clearing archive folder ("+archiveFolder.getAbsolutePath()+"): "+ioe);
+				throw new IOException("Error clearing archive folder ("+archiveFolder.getAbsolutePath()+")",ioe);
 			}
 		} else {
 			archiveFolder.mkdirs();
@@ -186,12 +207,18 @@ public abstract class AbstractFileManager implements KCFileManager, AutoCloseabl
 			try {
 				if( srcFile.isFile() ) {
 					FileUtils.copyFile(srcFile, new File(archiveFolder,srcFile.getName()));
-					srcFile.delete();
 				}
 			} catch( IOException ioe ) {
-				System.err.println("Error archiving file ("+srcFile+"): "+ioe);
+				throw new IOException("Error archiving file ("+srcFile+")",ioe);
 			}
 		}
 	}
 	
+	protected void deleteFiles() {
+		for( File srcFile : outputFolder.listFiles() ) {
+			if( srcFile.isFile() ) {
+				srcFile.delete();
+			}
+		}
+	}
 }

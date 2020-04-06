@@ -56,6 +56,12 @@ public interface KCDriverProperties {
 	boolean hasOption( String name );
 	
 	/**
+	 * Determines if an option is defined
+	 * @param name The option name
+	 */
+	boolean hasOption( String name, boolean defaultValue );
+	
+	/**
 	 * Get a driver option
 	 */
 	String getOption( String name );

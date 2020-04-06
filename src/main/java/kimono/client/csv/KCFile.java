@@ -18,4 +18,6 @@ public interface KCFile {
 	void close();
 
 	void write(KCTask task, JSONObject attrs) throws IOException;
+	
+	void commit() throws IOException;
 }

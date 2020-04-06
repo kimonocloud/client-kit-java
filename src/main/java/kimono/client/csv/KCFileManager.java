@@ -75,8 +75,7 @@ public interface KCFileManager {
 	void endGroup(KCTask task);
 
 	/**
-	 * Commit all files and move them to an archive directory
+	 * Commit all files and optionally move them to an archive directory
 	 */
-	void commitFiles();
-
+	void commitFiles() throws IOException;
 }

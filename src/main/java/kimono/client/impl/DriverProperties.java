@@ -102,6 +102,11 @@ public class DriverProperties implements KCDriverProperties {
 	public boolean hasOption(String name) {
 		return props.containsKey(name);
 	}
+	
+	@Override
+	public boolean hasOption(String name, boolean defaultValue) {
+		return( props.containsKey(name) ? true : defaultValue );
+	}
 
 	@Override
 	public String getOption(String name) {
