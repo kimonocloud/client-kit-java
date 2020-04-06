@@ -10,39 +10,39 @@
  	<packaging>jar</packaging>
 
 	<properties>
-		<apiVersion>2.0.0</apiVersion>
+		<api.version>2.0.3</api.version>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.kimonocloud</groupId>
 			<artifactId>api-interop-data</artifactId>
-			<version>${apiVersion}</version>
+			<version>${api.version}</version>
 		</dependency>		
 		<dependency>
 			<groupId>com.kimonocloud</groupId>
 			<artifactId>api-interop</artifactId>
-			<version>${apiVersion}</version>
+			<version>${api.version}</version>
 		</dependency>		
 		<dependency>
 			<groupId>com.kimonocloud</groupId>
 			<artifactId>api-broker</artifactId>
-			<version>${apiVersion}</version>
+			<version>${api.version}</version>
 		</dependency>		
 		<dependency>
 			<groupId>com.kimonocloud</groupId>
 			<artifactId>api-grades</artifactId>
-			<version>${apiVersion}</version>
+			<version>${api.version}</version>
 		</dependency>		
 		<dependency>
 			<groupId>com.kimonocloud</groupId>
 			<artifactId>api-platform</artifactId>
-			<version>${apiVersion}</version>
+			<version>${api.version}</version>
 		</dependency>		
 		<dependency>
 			<groupId>com.kimonocloud</groupId>
 			<artifactId>api-sifcloud</artifactId>
-			<version>${apiVersion}</version>
+			<version>${api.version}</version>
 		</dependency>		
 		<dependency>
 			<groupId>org.apache.commons</groupId>
