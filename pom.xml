@@ -3,7 +3,7 @@
 
 	<groupId>com.kimonocloud</groupId>
  	<artifactId>api-client-kit</artifactId>
-	<version>2.0.21</version>
+	<version>2.0.23</version>
 
 	<name>Kimono Client Kit for Java</name>
  	<description>Kimono Client Kit for Java</description>
@@ -11,7 +11,7 @@
 
 	<distributionManagement>
 		<repository>
-			<id>github</id>
+			<id>github-api-client-kit</id>
 			<name>GitHub Apache Maven Packages</name>
 			<url>https://maven.pkg.github.com/kimonocloud/client-kit-java</url>
 		</repository>
